@@ -1,0 +1,17 @@
+body {
+    font-family: Serif;
+    font-size: 25px;
+    color: black;
+    background-color: white;
+    max-width: 800px;
+    max-hight: 70%;
+    margin: auto;
+}
+
+
+blockquote {
+    background: lightgrey;
+    border: 10px solid lightgrey;
+    color:black;
+    font-style: italic;
+}
