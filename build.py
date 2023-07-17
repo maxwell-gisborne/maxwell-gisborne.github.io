@@ -7,6 +7,10 @@ import yaml
 root = Path.cwd()
 
 
+class Post(dict):
+    pass
+
+
 def get_markdown_paths(root: Path):
     'bredth first search, find all markdown files'
     queue = [root]
@@ -34,8 +38,6 @@ def pass_meta(path: Path, meta_string):
     if not isinstance(meta, dict):
         raise ValueError(f'yaml header must be dict\n at {path}')
     return defult | meta
-
-
 
 
 def read_file(path: Path):
@@ -126,7 +128,54 @@ def get_style(path: Path, meta: dict):
     return ['<style>', *content, '</style>']
 
 
+def directory_listings(title, tree: {Path | Post}):
+    lines = []
+    for title, c in tree.items():
+        if isinstance(c, Post):
+            path = c['path'].with_suffix('.html')
+            lines.append(f'<li><a href="{path}">{title}</li>')
+        else:
+            lines.extend(directory_listings(title, c))
+
+    if len(lines) == 0:
+        return []
+
+    return [f'<li>{title}<ul>', *lines, '</ul></li>']
+
+
+def generate_post_tree(posts):
+    post_tree = dict()
+    for post in posts:
+        parts = post['path'].parts[:-1]
+        cwd = post_tree
+        for part in parts:
+            if part not in cwd:
+                cwd[part] = dict()
+            cwd = cwd[part]
+        title = post['title']
+        while title in cwd:
+            title.append('+')
+        cwd[title] = post
+    return post_tree
+
+
+def generate_index(posts: [Post]):
+    return [
+        '<html>',
+        '<head>',
+        '<title>Index HTML</title>',
+        *get_style(Path('index.html'), dict(style='light-mode')),
+        '</head>',
+        '<body>',
+        '<h1> posts </h>',
+        *directory_listings('Posts', generate_post_tree(posts)),
+        '</body>',
+        '</html>'
+        ]
+
+
 if __name__ == '__main__':
+    posts = []
     for path in get_markdown_paths(root):
         print(path)
         meta, raw_head, markdown = read_file(path)
@@ -139,6 +188,12 @@ if __name__ == '__main__':
                 *get_includes(path, meta),
                 '</head>']
 
+        posts.append(Post(
+            path=path,
+            title=meta['title'],
+            meta=meta,
+            ))
+
         markdown = ['#' + meta['title']] + markdown
         body = html_form_markdown(root, markdown)
 
@@ -148,3 +203,5 @@ if __name__ == '__main__':
                 '</html>']
 
         write_html(path, html)
+    index = generate_index(posts)
+    write_html(Path('index.html'), index)
